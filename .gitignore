@@ -1,0 +1,15 @@
+# backend
+backend/.gradle/
+backend/build/
+backend/bin/
+backend/out/
+
+# frontend (frontend/.gitignore 도 있음)
+frontend/node_modules/
+frontend/dist/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store

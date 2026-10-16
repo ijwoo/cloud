@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: rush
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rush
+    username: rush
+    password: rush
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics

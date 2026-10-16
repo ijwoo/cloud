@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  --color-ink: #0b0b10;
+  --color-panel: #15151d;
+  --color-line: #262633;
+  --color-muted: #8b8b9e;
+  --color-accent: #ff4d6d;
+  --color-vip: #f5b942;
+  --color-seat: #4a4a62;
+}
+
+body {
+  @apply bg-ink text-zinc-100 antialiased;
+}
