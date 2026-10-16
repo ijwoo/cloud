@@ -34,6 +34,10 @@ public class Seat {
     @Enumerated(EnumType.STRING)
     private SeatStatus status;
 
+    // JPA @Version을 붙이면 NONE 전략까지 버전 검사를 받게 되므로,
+    // 낙관적 락 전략에서만 직접 비교한다.
+    private long version;
+
     protected Seat() {
     }
 
@@ -71,5 +75,9 @@ public class Seat {
 
     public SeatStatus getStatus() {
         return status;
+    }
+
+    public long getVersion() {
+        return version;
     }
 }

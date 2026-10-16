@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import './index.css'
 import Layout from './components/Layout.tsx'
 import ConcertListPage from './pages/ConcertListPage.tsx'
+import LabPage from './pages/LabPage.tsx'
 import SeatMapPage from './pages/SeatMapPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
         <Route element={<Layout />}>
           <Route index element={<ConcertListPage />} />
           <Route path="concerts/:concertId" element={<SeatMapPage />} />
+          <Route path="lab" element={<LabPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

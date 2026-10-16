@@ -22,6 +22,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     long countDoubleBookedSeats(Long concertId);
 
     @Modifying
+    @Query("delete from Reservation r where r.seat.id = :seatId")
+    int deleteBySeatId(Long seatId);
+
+    @Modifying
     @Query("delete from Reservation r where r.seat.id in (select s.id from Seat s where s.concert.id = :concertId)")
     int deleteByConcertId(Long concertId);
 }

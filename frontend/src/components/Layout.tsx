@@ -1,4 +1,7 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
+
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  `rounded-lg px-3 py-1.5 text-sm transition ${isActive ? 'bg-line text-zinc-100' : 'text-muted hover:text-zinc-100'}`
 
 export default function Layout() {
   return (
@@ -8,7 +11,14 @@ export default function Layout() {
           <Link to="/" className="text-lg font-black tracking-tight">
             RUSH<span className="text-accent">.</span>
           </Link>
-          <span className="text-xs text-muted">선착순 예매 실험실</span>
+          <nav className="flex gap-1">
+            <NavLink to="/" end className={navClass}>
+              예매
+            </NavLink>
+            <NavLink to="/lab" className={navClass}>
+              실험실
+            </NavLink>
+          </nav>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">

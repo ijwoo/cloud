@@ -5,5 +5,11 @@ package dev.imjaewoo.rush.reservation;
  */
 public enum LockStrategy {
     /** 아무 처리도 하지 않는다. 초과 예매를 재현하기 위한 출발점. */
-    NONE
+    NONE,
+    /** select ... for update 로 좌석 행을 잠그고 확인한다. */
+    PESSIMISTIC,
+    /** 읽은 버전과 같을 때만 UPDATE 한다. */
+    OPTIMISTIC,
+    /** 상태 확인과 변경을 UPDATE 한 문장으로 처리한다. */
+    CONDITIONAL_UPDATE
 }

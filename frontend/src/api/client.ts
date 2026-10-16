@@ -26,6 +26,18 @@ export interface Reservation {
   createdAt: string
 }
 
+export type LockStrategy = 'NONE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONDITIONAL_UPDATE'
+
+export interface ExperimentResult {
+  strategy: LockStrategy
+  users: number
+  succeeded: number
+  rejected: number
+  failed: number
+  reservations: number
+  elapsedMillis: number
+}
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -55,5 +67,10 @@ export const api = {
     request<Reservation>('/api/reservations', {
       method: 'POST',
       body: JSON.stringify({ seatId, userId }),
+    }),
+  runExperiment: (seatId: number, strategy: LockStrategy, users: number) =>
+    request<ExperimentResult>('/api/admin/experiments', {
+      method: 'POST',
+      body: JSON.stringify({ seatId, strategy, users }),
     }),
 }
