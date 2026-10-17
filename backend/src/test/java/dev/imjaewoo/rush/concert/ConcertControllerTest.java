@@ -22,11 +22,13 @@ class ConcertControllerTest {
     MockMvc mockMvc;
 
     @Test
-    void 시드_공연과_좌석_200석을_조회한다() throws Exception {
+    void 시드_공연과_좌석을_조회한다() throws Exception {
         mockMvc.perform(get("/api/concerts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("RUSH LIVE 2026"))
-                .andExpect(jsonPath("$[0].totalSeats").value(200));
+                .andExpect(jsonPath("$[0].totalSeats").value(200))
+                .andExpect(jsonPath("$[1].title").value("RUSH ARENA"))
+                .andExpect(jsonPath("$[1].totalSeats").value(5000));
 
         mockMvc.perform(get("/api/concerts/1/seats"))
                 .andExpect(status().isOk())

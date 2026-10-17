@@ -13,3 +13,4 @@ frontend/dist/
 *.iml
 .vscode/
 .DS_Store
+load-test/results/

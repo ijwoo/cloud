@@ -1,6 +1,9 @@
 package dev.imjaewoo.rush.reservation;
 
+import dev.imjaewoo.rush.common.ConflictException;
 import dev.imjaewoo.rush.concert.SeatRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import dev.imjaewoo.rush.concert.SeatStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,19 +19,37 @@ public class ReservationService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final SeatClaimRepository seatClaimRepository;
+    private final MeterRegistry meterRegistry;
 
     public ReservationService(List<SeatReserver> reservers,
                               SeatRepository seatRepository,
                               ReservationRepository reservationRepository,
-                              SeatClaimRepository seatClaimRepository) {
+                              SeatClaimRepository seatClaimRepository,
+                              MeterRegistry meterRegistry) {
         reservers.forEach(r -> this.reservers.put(r.strategy(), r));
         this.seatRepository = seatRepository;
         this.reservationRepository = reservationRepository;
         this.seatClaimRepository = seatClaimRepository;
+        this.meterRegistry = meterRegistry;
     }
 
+    /** 전략·결과별 처리 시간과 건수를 rush.reservation 타이머로 남긴다. */
     public Reservation reserve(Long seatId, String userId, LockStrategy strategy) {
-        return reservers.get(strategy).reserve(seatId, userId);
+        Timer.Sample sample = Timer.start(meterRegistry);
+        String outcome = "failed";
+        try {
+            Reservation reservation = reservers.get(strategy).reserve(seatId, userId);
+            outcome = "success";
+            return reservation;
+        } catch (ConflictException e) {
+            outcome = "rejected";
+            throw e;
+        } finally {
+            sample.stop(Timer.builder("rush.reservation")
+                    .tag("strategy", strategy.name())
+                    .tag("outcome", outcome)
+                    .register(meterRegistry));
+        }
     }
 
     @Transactional(readOnly = true)

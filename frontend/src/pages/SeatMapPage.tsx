@@ -91,7 +91,7 @@ export default function SeatMapPage() {
                     key={seat.id}
                     seat={seat}
                     selected={seat.id === selectedId}
-                    gap={i === 9}
+                    gap={i === rowSeats.length / 2 - 1}
                     onSelect={() => select(seat.id === selectedId ? null : seat.id)}
                   />
                 ))}

@@ -5,6 +5,8 @@ spring:
     url: jdbc:postgresql://localhost:5432/rush
     username: rush
     password: rush
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
   jpa:
     open-in-view: false
     hibernate:
@@ -14,4 +16,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics
+        include: health, info, metrics, prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        rush.reservation: true
+        http.server.requests: true

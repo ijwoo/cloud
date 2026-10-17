@@ -30,6 +30,13 @@
 
 ![실험실 화면](docs/images/lab-compare.png)
 
+**2단계 — 측정 환경** (진행 중)
+
+k6로 5,000석 공연에 20,000건을 보내고 Prometheus + Grafana로 지켜봅니다.
+측정해 보니 병목은 락 방식보다 *DB 커넥션 풀 대기*였습니다. → [측정 결과](docs/ROADMAP.md), [실행 방법](load-test/README.md)
+
+![Grafana 대시보드](docs/images/grafana-dashboard.png)
+
 전체 계획은 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다.
 
 ## 기술 스택
@@ -40,8 +47,9 @@
 | DB | PostgreSQL 17 |
 | 테스트 | JUnit 5, Testcontainers |
 | 프론트 | React 19, TypeScript, Vite, Tailwind CSS 4 |
+| 측정 | k6, Micrometer, Prometheus, Grafana |
 | 인프라 | Docker Compose, GitHub Actions |
-| 예정 | Redis, Kafka, k6, Prometheus, Grafana |
+| 예정 | Redis, Kafka |
 
 ## 실행하기
 
@@ -85,5 +93,7 @@ backend/   Spring Boot API
   reservation/   예매. SeatReserver 구현체 하나가 동시성 전략 하나
   experiment/    N명 동시 예매를 서버 안에서 재현 (실험실 화면, 테스트 공용)
 frontend/  React 예매 화면
+load-test/ k6 부하 테스트
+monitoring/ Prometheus, Grafana 설정과 대시보드
 docs/      로드맵, 측정 기록, 스크린샷
 ```
