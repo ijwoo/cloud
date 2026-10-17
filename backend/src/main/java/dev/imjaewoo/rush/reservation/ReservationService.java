@@ -15,13 +15,16 @@ public class ReservationService {
     private final Map<LockStrategy, SeatReserver> reservers = new EnumMap<>(LockStrategy.class);
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
+    private final SeatClaimRepository seatClaimRepository;
 
     public ReservationService(List<SeatReserver> reservers,
                               SeatRepository seatRepository,
-                              ReservationRepository reservationRepository) {
+                              ReservationRepository reservationRepository,
+                              SeatClaimRepository seatClaimRepository) {
         reservers.forEach(r -> this.reservers.put(r.strategy(), r));
         this.seatRepository = seatRepository;
         this.reservationRepository = reservationRepository;
+        this.seatClaimRepository = seatClaimRepository;
     }
 
     public Reservation reserve(Long seatId, String userId, LockStrategy strategy) {
@@ -41,6 +44,14 @@ public class ReservationService {
     @Transactional
     public void reset(Long concertId) {
         reservationRepository.deleteByConcertId(concertId);
+        seatClaimRepository.deleteByConcertId(concertId);
         seatRepository.resetByConcertId(concertId);
+    }
+
+    @Transactional
+    public void resetSeat(Long seatId) {
+        reservationRepository.deleteBySeatId(seatId);
+        seatClaimRepository.deleteBySeatId(seatId);
+        seatRepository.resetById(seatId);
     }
 }

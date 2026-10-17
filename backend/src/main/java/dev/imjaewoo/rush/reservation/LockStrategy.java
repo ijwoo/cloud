@@ -11,5 +11,7 @@ public enum LockStrategy {
     /** 읽은 버전과 같을 때만 UPDATE 한다. */
     OPTIMISTIC,
     /** 상태 확인과 변경을 UPDATE 한 문장으로 처리한다. */
-    CONDITIONAL_UPDATE
+    CONDITIONAL_UPDATE,
+    /** 좌석 번호가 기본 키인 선점 테이블에 먼저 insert 한 사람만 통과한다. */
+    UNIQUE_KEY
 }

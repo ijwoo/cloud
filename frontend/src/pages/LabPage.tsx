@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
-import { api, type ExperimentResult, type LockStrategy, type Seat } from '../api/client'
+import { api, type ExperimentResult, type LockStrategy, type Scenario, type Seat } from '../api/client'
 
 const STRATEGIES: { key: LockStrategy; name: string; desc: string }[] = [
   { key: 'NONE', name: '락 없음', desc: '조회 → 확인 → 저장. 0단계 출발점' },
   { key: 'PESSIMISTIC', name: '비관적 락', desc: 'SELECT … FOR UPDATE로 행을 잠근다' },
   { key: 'OPTIMISTIC', name: '낙관적 락', desc: '읽은 버전과 같을 때만 UPDATE' },
   { key: 'CONDITIONAL_UPDATE', name: '조건부 UPDATE', desc: "WHERE status = 'AVAILABLE' 한 문장" },
+  { key: 'UNIQUE_KEY', name: '유니크 키 선점', desc: '좌석 번호가 PK인 테이블에 먼저 insert' },
+]
+
+const SCENARIOS: { key: Scenario; name: string }[] = [
+  { key: 'HOT', name: '한 좌석에 몰리게' },
+  { key: 'SPREAD', name: '200석에 흩어지게' },
 ]
 
 const strategyName = (key: LockStrategy) => STRATEGIES.find((s) => s.key === key)?.name ?? key
@@ -13,6 +19,7 @@ const strategyName = (key: LockStrategy) => STRATEGIES.find((s) => s.key === key
 export default function LabPage() {
   const [seat, setSeat] = useState<Seat | null>(null)
   const [strategy, setStrategy] = useState<LockStrategy>('NONE')
+  const [scenario, setScenario] = useState<Scenario>('HOT')
   const [users, setUsers] = useState(100)
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<ExperimentResult | null>(null)
@@ -32,7 +39,7 @@ export default function LabPage() {
     setError(null)
     setResult(null)
     try {
-      const r = await api.runExperiment(seat.id, strategy, users)
+      const r = await api.runExperiment(seat.id, strategy, scenario, users)
       setResult(r)
       setHistory((h) => [r, ...h].slice(0, 12))
     } catch (e) {
@@ -48,13 +55,31 @@ export default function LabPage() {
         <p className="text-sm text-accent">1단계 · DB만으로 막기</p>
         <h1 className="text-3xl font-black tracking-tight">실험실</h1>
         <p className="mt-2 text-sm text-muted">
-          좌석 하나{seat && ` (${seat.rowLabel}열 ${seat.number}번)`}에 여러 명이 <em>정확히 같은 순간</em> 예매를
-          누르면 어떻게 되는지 서버에서 재현합니다. 정상이라면 예약은 1건이어야 합니다.
+          여러 명이 <em>정확히 같은 순간</em> 예매를 누르면 어떻게 되는지 서버에서 재현합니다. 어떤 경우든 같은
+          좌석이 두 번 팔리면 안 됩니다.
+          {scenario === 'HOT' && seat && ` 지금은 모두가 ${seat.rowLabel}열 ${seat.number}번을 노립니다.`}
+          {scenario === 'SPREAD' && ' 각자 200석 중 하나를 무작위로 고릅니다. 실험 전에 공연 전체 예약이 초기화됩니다.'}
         </p>
       </div>
 
       <div className="grid gap-4 rounded-2xl border border-line bg-panel p-4 sm:p-6">
-        <div className="grid gap-2 sm:grid-cols-4">
+        <div className="flex w-fit gap-1 rounded-xl bg-ink p-1">
+          {SCENARIOS.map((sc) => (
+            <button
+              key={sc.key}
+              type="button"
+              onClick={() => setScenario(sc.key)}
+              aria-pressed={scenario === sc.key}
+              className={`rounded-lg px-4 py-2 text-sm transition ${
+                scenario === sc.key ? 'bg-line font-semibold text-zinc-100' : 'text-muted hover:text-zinc-100'
+              }`}
+            >
+              {sc.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-5">
           {STRATEGIES.map((s) => (
             <button
               key={s.key}
@@ -77,7 +102,7 @@ export default function LabPage() {
             <input
               type="range"
               min={10}
-              max={500}
+              max={1000}
               step={10}
               value={users}
               onChange={(e) => setUsers(Number(e.target.value))}
@@ -106,11 +131,12 @@ export default function LabPage() {
             <thead className="text-left text-xs text-muted">
               <tr className="border-b border-line">
                 <th className="px-4 py-3 font-normal">전략</th>
+                <th className="px-4 py-3 font-normal">시나리오</th>
                 <th className="px-4 py-3 text-right font-normal">동시 접속</th>
                 <th className="px-4 py-3 text-right font-normal">성공</th>
                 <th className="px-4 py-3 text-right font-normal">거절</th>
                 <th className="px-4 py-3 text-right font-normal">오류</th>
-                <th className="px-4 py-3 text-right font-normal">저장된 예약</th>
+                <th className="px-4 py-3 text-right font-normal">중복 판매</th>
                 <th className="px-4 py-3 text-right font-normal">소요</th>
               </tr>
             </thead>
@@ -118,14 +144,15 @@ export default function LabPage() {
               {history.map((r, i) => (
                 <tr key={i} className="border-b border-line/50 last:border-0">
                   <td className="px-4 py-2.5">{strategyName(r.strategy)}</td>
+                  <td className="px-4 py-2.5 text-muted">{r.scenario === 'HOT' ? '한 좌석' : `${r.targetSeats}석`}</td>
                   <td className="px-4 py-2.5 text-right">{r.users}</td>
                   <td className="px-4 py-2.5 text-right">{r.succeeded}</td>
                   <td className="px-4 py-2.5 text-right text-muted">{r.rejected}</td>
                   <td className="px-4 py-2.5 text-right text-muted">{r.failed}</td>
                   <td
-                    className={`px-4 py-2.5 text-right font-semibold ${r.reservations > 1 ? 'text-accent' : 'text-emerald-400'}`}
+                    className={`px-4 py-2.5 text-right font-semibold ${r.overbooked > 0 ? 'text-accent' : 'text-emerald-400'}`}
                   >
-                    {r.reservations}건
+                    {r.overbooked}건
                   </td>
                   <td className="px-4 py-2.5 text-right text-muted">{r.elapsedMillis}ms</td>
                 </tr>
@@ -139,7 +166,7 @@ export default function LabPage() {
 }
 
 function ResultPanel({ result }: { result: ExperimentResult }) {
-  const overbooked = result.reservations > 1
+  const overbooked = result.overbooked > 0
   const dots = [
     ...Array<string>(result.succeeded).fill('bg-accent'),
     ...Array<string>(result.failed).fill('bg-vip'),
@@ -151,13 +178,15 @@ function ResultPanel({ result }: { result: ExperimentResult }) {
       <div
         className={`flex flex-col justify-center rounded-xl p-5 ${overbooked ? 'bg-accent/15' : 'bg-emerald-500/10'}`}
       >
-        <p className="text-xs text-muted">좌석 1개에 저장된 예약</p>
+        <p className="text-xs text-muted">같은 좌석 중복 판매</p>
         <p className={`text-6xl font-black tabular-nums ${overbooked ? 'text-accent' : 'text-emerald-400'}`}>
-          {result.reservations}
+          {result.overbooked}
           <span className="text-2xl">건</span>
         </p>
         <p className="mt-2 text-sm">
-          {overbooked ? `${result.reservations - 1}명에게 같은 좌석이 중복 판매됨` : '정상 — 한 명만 성공'}
+          {overbooked
+            ? `좌석 ${result.reservedSeats}개에 예약 ${result.reservations}건이 저장됨`
+            : `정상 — 좌석 ${result.reservedSeats}개에 한 명씩`}
         </p>
       </div>
 

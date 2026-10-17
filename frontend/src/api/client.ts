@@ -26,15 +26,21 @@ export interface Reservation {
   createdAt: string
 }
 
-export type LockStrategy = 'NONE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONDITIONAL_UPDATE'
+export type LockStrategy = 'NONE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONDITIONAL_UPDATE' | 'UNIQUE_KEY'
+
+export type Scenario = 'HOT' | 'SPREAD'
 
 export interface ExperimentResult {
   strategy: LockStrategy
+  scenario: Scenario
   users: number
+  targetSeats: number
   succeeded: number
   rejected: number
   failed: number
   reservations: number
+  reservedSeats: number
+  overbooked: number
   elapsedMillis: number
 }
 
@@ -68,9 +74,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ seatId, userId }),
     }),
-  runExperiment: (seatId: number, strategy: LockStrategy, users: number) =>
+  runExperiment: (seatId: number, strategy: LockStrategy, scenario: Scenario, users: number) =>
     request<ExperimentResult>('/api/admin/experiments', {
       method: 'POST',
-      body: JSON.stringify({ seatId, strategy, users }),
+      body: JSON.stringify({ seatId, strategy, scenario, users }),
     }),
 }

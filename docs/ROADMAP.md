@@ -15,15 +15,17 @@
 
 📝 글감: *100명이 동시에 예매하면 생기는 일 — 초과 예매를 일부러 만들어 보기*
 
-## 1단계 — DB만으로 막기 (진행 중)
+## 1단계 — DB만으로 막기 ✅
 
 - [x] 비관적 락 (`SELECT ... FOR UPDATE`)
 - [x] 낙관적 락 (버전 비교 UPDATE). JPA `@Version`은 NONE 전략까지 바꿔 버려서 직접 비교
 - [x] 조건부 UPDATE (`update seat set status='RESERVED' where id=? and status='AVAILABLE'`)
 - [x] 실험실 화면 — 전략과 동시 접속 수를 골라 서버에서 재현하고 결과 비교
 - [x] 같은 테스트로 세 전략 모두 예약 1건 검증
-- [ ] `reservation.seat_id` unique 제약 — 최후의 방어선
-- [ ] 여러 좌석에 고르게 / 한 좌석에 몰리게 — 시나리오별 소요 시간 비교
+- [x] 유니크 키 선점 (`seat_claim.seat_id` PK + `on conflict do nothing`). reservation에 직접 unique를 걸면 NONE 재현까지 막혀서 테이블 분리
+- [x] 시나리오 비교 — 한 좌석에 몰리게(HOT) / 200석에 흩어지게(SPREAD)
+
+**결과:** 네 전략 모두 HOT·SPREAD에서 중복 판매 0건. 락 없음은 SPREAD 1,000명에서도 8건 중복 판매.
 
 📝 글감: *DB 락 세 가지를 같은 조건에서 비교해 보니*
 
@@ -76,5 +78,9 @@
 | 2026-10-16 | 1 | PESSIMISTIC | 실험실, 같은 조건 | 예약 1건, 318ms |
 | 2026-10-16 | 1 | OPTIMISTIC | 실험실, 같은 조건 | 예약 1건, 122ms |
 | 2026-10-16 | 1 | CONDITIONAL_UPDATE | 실험실, 같은 조건 | 예약 1건, 292ms |
+
+| 2026-10-17 | 1 | NONE | SPREAD 1,000명 → 200석 | 중복 판매 8건, 664ms |
+| 2026-10-17 | 1 | 4개 전략 | SPREAD 1,000명 → 200석 | 중복 판매 0건, 464~650ms |
+| 2026-10-17 | 1 | UNIQUE_KEY | HOT 100명 → 좌석 1개 | 예약 1건, 108ms |
 
 > 소요 시간은 아직 한 번씩 잰 값이라 참고용입니다. 2단계에서 k6로 반복 측정합니다.

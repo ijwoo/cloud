@@ -1,19 +1,22 @@
 package dev.imjaewoo.rush.experiment;
 
 import dev.imjaewoo.rush.common.ConflictException;
+import dev.imjaewoo.rush.common.NotFoundException;
+import dev.imjaewoo.rush.concert.Seat;
 import dev.imjaewoo.rush.concert.SeatRepository;
 import dev.imjaewoo.rush.reservation.ReservationRepository;
 import dev.imjaewoo.rush.reservation.ReservationService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 좌석 하나에 N명이 동시에 예매를 시도하는 상황을 서버 안에서 재현한다.
+ * 여러 명이 동시에 예매를 누르는 상황을 서버 안에서 재현한다.
  * 화면의 "실험실"과 동시성 테스트가 같은 코드를 쓴다.
  */
 @Service
@@ -24,21 +27,30 @@ public class ExperimentService {
     private final ReservationService reservationService;
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
-    private final TransactionTemplate transactionTemplate;
 
     public ExperimentService(ReservationService reservationService,
                              SeatRepository seatRepository,
-                             ReservationRepository reservationRepository,
-                             TransactionTemplate transactionTemplate) {
+                             ReservationRepository reservationRepository) {
         this.reservationService = reservationService;
         this.seatRepository = seatRepository;
         this.reservationRepository = reservationRepository;
-        this.transactionTemplate = transactionTemplate;
     }
 
     public ExperimentResult run(ExperimentRequest request) throws InterruptedException {
-        Long seatId = request.seatId();
-        resetSeat(seatId);
+        Seat seat = seatRepository.findById(request.seatId())
+                .orElseThrow(() -> new NotFoundException("좌석을 찾을 수 없습니다. id=" + request.seatId()));
+        Long concertId = seatRepository.findConcertIdBySeatId(seat.getId());
+
+        List<Long> targets = switch (request.scenario()) {
+            case HOT -> {
+                reservationService.resetSeat(seat.getId());
+                yield List.of(seat.getId());
+            }
+            case SPREAD -> {
+                reservationService.reset(concertId);
+                yield seatRepository.findByConcertIdOrderByIdAsc(concertId).stream().map(Seat::getId).toList();
+            }
+        };
 
         AtomicInteger succeeded = new AtomicInteger();
         AtomicInteger rejected = new AtomicInteger();
@@ -50,10 +62,11 @@ public class ExperimentService {
         try (ExecutorService executor = Executors.newFixedThreadPool(THREADS)) {
             for (int i = 0; i < request.users(); i++) {
                 String userId = "lab-" + i;
+                Long target = targets.get(ThreadLocalRandom.current().nextInt(targets.size()));
                 executor.submit(() -> {
                     try {
                         start.await();
-                        reservationService.reserve(seatId, userId, request.strategy());
+                        reservationService.reserve(target, userId, request.strategy());
                         succeeded.incrementAndGet();
                     } catch (ConflictException e) {
                         rejected.incrementAndGet();
@@ -70,21 +83,28 @@ public class ExperimentService {
             elapsed = (System.nanoTime() - startedAt) / 1_000_000;
         }
 
+        long reservations;
+        long reservedSeats;
+        if (request.scenario() == Scenario.HOT) {
+            reservations = reservationRepository.countBySeatId(seat.getId());
+            reservedSeats = reservations > 0 ? 1 : 0;
+        } else {
+            reservations = reservationRepository.countBySeatConcertId(concertId);
+            reservedSeats = reservationRepository.countReservedSeatsByConcertId(concertId);
+        }
+
         return new ExperimentResult(
                 request.strategy(),
+                request.scenario(),
                 request.users(),
+                targets.size(),
                 succeeded.get(),
                 rejected.get(),
                 failed.get(),
-                reservationRepository.countBySeatId(seatId),
+                reservations,
+                reservedSeats,
+                reservations - reservedSeats,
                 elapsed
         );
-    }
-
-    private void resetSeat(Long seatId) {
-        transactionTemplate.executeWithoutResult(status -> {
-            reservationRepository.deleteBySeatId(seatId);
-            seatRepository.resetById(seatId);
-        });
     }
 }

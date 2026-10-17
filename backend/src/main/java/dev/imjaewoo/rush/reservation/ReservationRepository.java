@@ -10,6 +10,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     long countBySeatConcertId(Long concertId);
 
+    @Query("select count(distinct r.seat.id) from Reservation r where r.seat.concert.id = :concertId")
+    long countReservedSeatsByConcertId(Long concertId);
+
     /** 예약이 2건 이상 잡힌 좌석 수. 0이 아니면 초과 예매가 일어난 것. */
     @Query("""
             select count(*) from (

@@ -22,10 +22,11 @@
 한 좌석이 10번 팔립니다. 10은 HikariCP 기본 커넥션 풀 크기와 같습니다.
 (재현 테스트: `backend/src/test/.../NoLockSeatReserverConcurrencyTest.java`)
 
-**1단계 — DB만으로 막기** (진행 중)
+**1단계 — DB만으로 막기** ✅
 
-비관적 락, 낙관적 락, 조건부 UPDATE 세 전략 모두 같은 조건에서 예약이 1건으로 막힙니다.
-`/lab` 실험실 화면에서 전략과 동시 접속 수를 골라 직접 비교할 수 있습니다.
+비관적 락, 낙관적 락, 조건부 UPDATE, 유니크 키 선점 네 전략 모두
+"한 좌석에 몰리게"와 "200석에 흩어지게" 두 시나리오에서 중복 판매 0건입니다.
+`/lab` 실험실 화면에서 시나리오·전략·동시 접속 수를 골라 직접 비교할 수 있습니다.
 
 ![실험실 화면](docs/images/lab-compare.png)
 
@@ -72,9 +73,9 @@ cd backend && ./gradlew test
 | POST | `/api/reservations?strategy=NONE` | 예매 `{ seatId, userId }` |
 | GET | `/api/admin/concerts/{id}/stats` | 예약 건수, 초과 예매된 좌석 수 |
 | POST | `/api/admin/concerts/{id}/reset` | 실험 초기화 |
-| POST | `/api/admin/experiments` | 동시 예매 실험 `{ seatId, strategy, users }` |
+| POST | `/api/admin/experiments` | 동시 예매 실험 `{ seatId, strategy, scenario, users }` |
 
-`strategy`는 `NONE`, `PESSIMISTIC`, `OPTIMISTIC`, `CONDITIONAL_UPDATE` 중 하나입니다.
+`strategy`는 `NONE`, `PESSIMISTIC`, `OPTIMISTIC`, `CONDITIONAL_UPDATE`, `UNIQUE_KEY` 중 하나, `scenario`는 `HOT`(한 좌석) 또는 `SPREAD`(공연 전체 좌석)입니다.
 
 ## 구조
 
