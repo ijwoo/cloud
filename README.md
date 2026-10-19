@@ -33,7 +33,7 @@
 **2단계 — 측정 환경** (진행 중)
 
 k6로 5,000석 공연에 20,000건을 보내고 Prometheus + Grafana로 지켜봅니다.
-측정해 보니 병목은 락 방식보다 *DB 커넥션 풀 대기*였습니다. → [측정 결과](docs/ROADMAP.md), [실행 방법](load-test/README.md)
+처음엔 *DB 커넥션 풀 대기*가 병목처럼 보였지만, 풀을 10→50으로 늘려도 처리량은 그대로였고 p99는 오히려 나빠졌습니다. 진짜 한계는 CPU였습니다. → [측정 결과](docs/ROADMAP.md), [실행 방법](load-test/README.md)
 
 ![Grafana 대시보드](docs/images/grafana-dashboard.png)
 
