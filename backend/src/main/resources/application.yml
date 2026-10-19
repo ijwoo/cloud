@@ -7,6 +7,10 @@ spring:
     password: rush
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
+  data:
+    redis:
+      host: localhost
+      port: 6379
   jpa:
     open-in-view: false
     hibernate:
@@ -22,3 +26,10 @@ management:
       percentiles-histogram:
         rush.reservation: true
         http.server.requests: true
+
+rush:
+  queue:
+    # 대기열에서 1초마다 입장시키는 인원
+    admit-per-second: 50
+    # 입장 후 예매할 수 있는 시간
+    admitted-ttl: 5m

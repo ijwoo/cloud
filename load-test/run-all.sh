@@ -7,14 +7,14 @@ cd "$(dirname "$0")"
 mkdir -p results && chmod a+w results  # k6 이미지는 root가 아닌 사용자로 돈다
 
 for scenario in ${SCENARIOS:-HOT SPREAD}; do
-  for strategy in ${STRATEGIES:-NONE PESSIMISTIC OPTIMISTIC CONDITIONAL_UPDATE UNIQUE_KEY}; do
+  for strategy in ${STRATEGIES:-NONE PESSIMISTIC OPTIMISTIC CONDITIONAL_UPDATE UNIQUE_KEY REDIS_LOCK}; do
     echo "=== $strategy / $scenario"
     docker run --rm --network host -v "$PWD:/scripts" \
       -e STRATEGY="$strategy" -e SCENARIO="$scenario" \
       -e VUS="${VUS:-200}" -e ITERATIONS="${ITERATIONS:-20000}" \
       grafana/k6:2.3.0 run --quiet \
       --summary-export "/scripts/results/${RESULT_PREFIX:-}${scenario}-${strategy}.json" \
-      /scripts/reserve.js 2>&1 | grep -E '\[(NONE|PESSIMISTIC|OPTIMISTIC|CONDITIONAL_UPDATE|UNIQUE_KEY)/' || true
+      /scripts/reserve.js 2>&1 | grep -E '\[(NONE|PESSIMISTIC|OPTIMISTIC|CONDITIONAL_UPDATE|UNIQUE_KEY|REDIS_LOCK)/' || true
     sleep "${PAUSE:-5}"
   done
 done

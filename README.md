@@ -37,6 +37,13 @@ k6로 5,000석 공연에 20,000건을 보내고 Prometheus + Grafana로 지켜�
 
 ![Grafana 대시보드](docs/images/grafana-dashboard.png)
 
+**3단계 — Redis** (진행 중)
+
+Redis 분산 락을 직접 구현해 DB 락과 비교했고, Sorted Set으로 대기열을 만들었습니다.
+대기열이 켜진 공연은 대기실에서 "내 앞에 N명"을 기다린 뒤에만 예매할 수 있습니다.
+
+![대기실 화면](docs/images/waiting-room.png)
+
 전체 계획은 [docs/ROADMAP.md](docs/ROADMAP.md)에 있습니다.
 
 ## 기술 스택
@@ -49,14 +56,15 @@ k6로 5,000석 공연에 20,000건을 보내고 Prometheus + Grafana로 지켜�
 | 프론트 | React 19, TypeScript, Vite, Tailwind CSS 4 |
 | 측정 | k6, Micrometer, Prometheus, Grafana |
 | 인프라 | Docker Compose, GitHub Actions |
-| 예정 | Redis, Kafka |
+| 캐시·대기열 | Redis 7.4 |
+| 예정 | Kafka |
 
 ## 실행하기
 
 필요한 것: JDK 21, Node 22, Docker
 
 ```bash
-# 1. DB
+# 1. DB, Redis
 docker compose up -d
 
 # 2. 백엔드 (http://localhost:8080)
@@ -82,8 +90,12 @@ cd backend && ./gradlew test
 | GET | `/api/admin/concerts/{id}/stats` | 예약 건수, 초과 예매된 좌석 수 |
 | POST | `/api/admin/concerts/{id}/reset` | 실험 초기화 |
 | POST | `/api/admin/experiments` | 동시 예매 실험 `{ seatId, strategy, scenario, users }` |
+| POST | `/api/queue/{concertId}` | 대기열 입장 → `{ token }` |
+| GET | `/api/queue/{concertId}/{token}` | 내 순번 `{ state, ahead, waiting }` |
+| POST | `/api/admin/queue/{concertId}/open?bots=N` | 대기열 켜기 + 가상 대기자 N명 |
+| POST | `/api/admin/queue/{concertId}/close` | 대기열 끄기 |
 
-`strategy`는 `NONE`, `PESSIMISTIC`, `OPTIMISTIC`, `CONDITIONAL_UPDATE`, `UNIQUE_KEY` 중 하나, `scenario`는 `HOT`(한 좌석) 또는 `SPREAD`(공연 전체 좌석)입니다.
+`strategy`는 `NONE`, `PESSIMISTIC`, `OPTIMISTIC`, `CONDITIONAL_UPDATE`, `UNIQUE_KEY`, `REDIS_LOCK` 중 하나, `scenario`는 `HOT`(한 좌석) 또는 `SPREAD`(공연 전체 좌석)입니다.
 
 ## 구조
 
@@ -92,6 +104,7 @@ backend/   Spring Boot API
   concert/       공연·좌석 조회
   reservation/   예매. SeatReserver 구현체 하나가 동시성 전략 하나
   experiment/    N명 동시 예매를 서버 안에서 재현 (실험실 화면, 테스트 공용)
+  queue/         Redis 대기열과 1초마다 입장시키는 스케줄러
 frontend/  React 예매 화면
 load-test/ k6 부하 테스트
 monitoring/ Prometheus, Grafana 설정과 대시보드

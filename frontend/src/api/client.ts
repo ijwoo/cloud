@@ -26,7 +26,7 @@ export interface Reservation {
   createdAt: string
 }
 
-export type LockStrategy = 'NONE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONDITIONAL_UPDATE' | 'UNIQUE_KEY'
+export type LockStrategy = 'NONE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONDITIONAL_UPDATE' | 'UNIQUE_KEY' | 'REDIS_LOCK'
 
 export type Scenario = 'HOT' | 'SPREAD'
 
@@ -42,6 +42,13 @@ export interface ExperimentResult {
   reservedSeats: number
   overbooked: number
   elapsedMillis: number
+}
+
+export interface QueueStatus {
+  state: 'WAITING' | 'ADMITTED' | 'EXPIRED'
+  ahead: number
+  waiting: number
+  admitPerSecond: number
 }
 
 export class ApiError extends Error {
@@ -69,11 +76,18 @@ export const api = {
   concerts: () => request<Concert[]>('/api/concerts'),
   concert: (id: number) => request<Concert>(`/api/concerts/${id}`),
   seats: (concertId: number) => request<Seat[]>(`/api/concerts/${concertId}/seats`),
-  reserve: (seatId: number, userId: string) =>
+  reserve: (seatId: number, userId: string, queueToken?: string | null) =>
     request<Reservation>('/api/reservations', {
       method: 'POST',
       body: JSON.stringify({ seatId, userId }),
+      headers: queueToken ? { 'X-Queue-Token': queueToken } : undefined,
     }),
+  queueInfo: (concertId: number) => request<{ open: boolean; waiting: number }>(`/api/queue/${concertId}`),
+  enterQueue: (concertId: number) => request<{ token: string }>(`/api/queue/${concertId}`, { method: 'POST' }),
+  queueStatus: (concertId: number, token: string) => request<QueueStatus>(`/api/queue/${concertId}/${token}`),
+  openQueue: (concertId: number, bots: number) =>
+    request<void>(`/api/admin/queue/${concertId}/open?bots=${bots}`, { method: 'POST' }),
+  closeQueue: (concertId: number) => request<void>(`/api/admin/queue/${concertId}/close`, { method: 'POST' }),
   runExperiment: (seatId: number, strategy: LockStrategy, scenario: Scenario, users: number) =>
     request<ExperimentResult>('/api/admin/experiments', {
       method: 'POST',

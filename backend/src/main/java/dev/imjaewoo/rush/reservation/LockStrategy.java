@@ -13,5 +13,7 @@ public enum LockStrategy {
     /** 상태 확인과 변경을 UPDATE 한 문장으로 처리한다. */
     CONDITIONAL_UPDATE,
     /** 좌석 번호가 기본 키인 선점 테이블에 먼저 insert 한 사람만 통과한다. */
-    UNIQUE_KEY
+    UNIQUE_KEY,
+    /** Redis SET NX로 좌석 단위 락을 잡고, 커밋이 끝난 뒤 푼다. */
+    REDIS_LOCK
 }

@@ -6,6 +6,7 @@ import Layout from './components/Layout.tsx'
 import ConcertListPage from './pages/ConcertListPage.tsx'
 import LabPage from './pages/LabPage.tsx'
 import SeatMapPage from './pages/SeatMapPage.tsx'
+import WaitingRoomPage from './pages/WaitingRoomPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -14,6 +15,7 @@ createRoot(document.getElementById('root')!).render(
         <Route element={<Layout />}>
           <Route index element={<ConcertListPage />} />
           <Route path="concerts/:concertId" element={<SeatMapPage />} />
+          <Route path="concerts/:concertId/queue" element={<WaitingRoomPage />} />
           <Route path="lab" element={<LabPage />} />
         </Route>
       </Routes>

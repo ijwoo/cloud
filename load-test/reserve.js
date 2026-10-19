@@ -1,7 +1,7 @@
 // 예매 러시 부하 테스트.
 // 같은 양의 요청(ITERATIONS)을 VUS명이 나눠 보내고, 전략별로 처리량·지연·중복 판매를 비교한다.
 //
-//   STRATEGY   NONE | PESSIMISTIC | OPTIMISTIC | CONDITIONAL_UPDATE | UNIQUE_KEY
+//   STRATEGY   NONE | PESSIMISTIC | OPTIMISTIC | CONDITIONAL_UPDATE | UNIQUE_KEY | REDIS_LOCK
 //   SCENARIO   HOT(맨 앞줄 50석에 몰림) | SPREAD(5,000석 전체에 흩어짐)
 import http from 'k6/http'
 import { check } from 'k6'

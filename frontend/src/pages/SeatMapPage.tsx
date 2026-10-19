@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { api, type Concert, type Seat } from '../api/client'
-import { getUserId } from '../api/user'
+import { getQueueToken, getUserId } from '../api/user'
 import { concertDate, won } from '../components/format'
 
 // 실시간 반영은 이후 단계에서 SSE로 바꾼다. 지금은 2초마다 다시 읽는다.
@@ -11,6 +11,7 @@ type Notice = { kind: 'ok' | 'error'; text: string }
 
 export default function SeatMapPage() {
   const concertId = Number(useParams().concertId)
+  const navigate = useNavigate()
   const [concert, setConcert] = useState<Concert | null>(null)
   const [seats, setSeats] = useState<Seat[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -35,6 +36,19 @@ export default function SeatMapPage() {
     }
   }, [concertId])
 
+  // 대기열이 켜져 있는데 입장 허가가 없으면 대기실로 보낸다.
+  useEffect(() => {
+    api
+      .queueInfo(concertId)
+      .then(async (q) => {
+        if (!q.open) return
+        const token = getQueueToken(concertId)
+        const s = token ? await api.queueStatus(concertId, token) : null
+        if (s?.state !== 'ADMITTED') navigate(`/concerts/${concertId}/queue`, { replace: true })
+      })
+      .catch(() => {})
+  }, [concertId, navigate])
+
   useEffect(() => {
     load().catch((e: Error) => setNotice({ kind: 'error', text: e.message }))
     const timer = setInterval(() => load().catch(() => {}), POLL_MS)
@@ -53,7 +67,7 @@ export default function SeatMapPage() {
     if (!selected) return
     setSubmitting(true)
     try {
-      await api.reserve(selected.id, getUserId())
+      await api.reserve(selected.id, getUserId(), getQueueToken(concertId))
       select(null)
       await load()
       setNotice({ kind: 'ok', text: `${selected.rowLabel}열 ${selected.number}번 예매 완료!` })

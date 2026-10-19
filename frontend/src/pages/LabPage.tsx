@@ -7,6 +7,7 @@ const STRATEGIES: { key: LockStrategy; name: string; desc: string }[] = [
   { key: 'OPTIMISTIC', name: '낙관적 락', desc: '읽은 버전과 같을 때만 UPDATE' },
   { key: 'CONDITIONAL_UPDATE', name: '조건부 UPDATE', desc: "WHERE status = 'AVAILABLE' 한 문장" },
   { key: 'UNIQUE_KEY', name: '유니크 키 선점', desc: '좌석 번호가 PK인 테이블에 먼저 insert' },
+  { key: 'REDIS_LOCK', name: 'Redis 락', desc: 'SET NX로 좌석 락, 커밋 후 해제' },
 ]
 
 const SCENARIOS: { key: Scenario; name: string }[] = [
@@ -79,7 +80,7 @@ export default function LabPage() {
           ))}
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {STRATEGIES.map((s) => (
             <button
               key={s.key}
@@ -125,6 +126,8 @@ export default function LabPage() {
 
       {result && <ResultPanel result={result} />}
 
+      <QueuePanel />
+
       {history.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-line bg-panel">
           <table className="w-full text-sm">
@@ -162,6 +165,62 @@ export default function LabPage() {
         </div>
       )}
     </section>
+  )
+}
+
+function QueuePanel() {
+  const [info, setInfo] = useState<{ open: boolean; waiting: number } | null>(null)
+  const [bots, setBots] = useState(3000)
+
+  useEffect(() => {
+    const load = () => api.queueInfo(1).then(setInfo).catch(() => {})
+    load()
+    const timer = setInterval(load, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-panel p-4 sm:p-6">
+      <div className="min-w-48 flex-1">
+        <p className="font-semibold">대기열 (RUSH LIVE 2026)</p>
+        <p className="text-sm text-muted">
+          {info?.open ? (
+            <>
+              켜짐 · 지금 <b className="tabular-nums text-zinc-100">{info.waiting.toLocaleString('ko-KR')}</b>명 대기 중
+            </>
+          ) : (
+            '꺼짐 — 바로 좌석 선택으로 들어갑니다'
+          )}
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-muted">
+        가상 대기자
+        <input
+          type="number"
+          min={0}
+          step={500}
+          value={bots}
+          onChange={(e) => setBots(Number(e.target.value))}
+          className="w-24 rounded-lg border border-line bg-ink px-2 py-1.5 text-right text-zinc-100 tabular-nums"
+        />
+        명
+      </label>
+      <button
+        type="button"
+        onClick={() => api.openQueue(1, bots)}
+        className="rounded-xl border border-accent px-4 py-2.5 text-sm font-semibold text-accent transition hover:bg-accent/10"
+      >
+        대기열 켜고 줄 세우기
+      </button>
+      <button
+        type="button"
+        onClick={() => api.closeQueue(1)}
+        disabled={!info?.open}
+        className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted transition hover:text-zinc-100 disabled:opacity-40"
+      >
+        끄기
+      </button>
+    </div>
   )
 }
 
